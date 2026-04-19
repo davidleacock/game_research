@@ -18,6 +18,7 @@ fn main() {
         .add_systems(Update, detect_collisions)
         .add_systems(Update, fire_weapon)
         .add_systems(Update, move_projectiles)
+        .add_systems(Update, detect_projectile_collisions)
         .run();
 }
 
@@ -35,7 +36,6 @@ enum WeaponType {
 
 #[derive(Component)]
 struct Projectile {
-    radius: f32,
     speed: f32,
     direction: Vec2,
 }
@@ -97,9 +97,9 @@ fn fire_weapon(
                     Mesh2d(meshes.add(Circle::new(PROJECTILE_1_RADIUS))),
                     MeshMaterial2d(materials.add(Color::linear_rgb(1.0, 0.0, 0.0))),
                     Transform::from_xyz(location.x, location.y, 0.0),
+                    Collider { radius: PROJECTILE_1_RADIUS },
                     Projectile {
-                        radius: PROJECTILE_1_RADIUS,
-                        speed: 10.0,
+                        speed: 300.0,
                         direction: player.facing,
                     },
                 ));
@@ -109,9 +109,9 @@ fn fire_weapon(
                     Mesh2d(meshes.add(Circle::new(PROJECTILE_2_RADIUS))),
                     MeshMaterial2d(materials.add(Color::linear_rgb(0.0, 1.0, 0.0))),
                     Transform::from_xyz(location.x, location.y, 0.0),
+                    Collider { radius: PROJECTILE_2_RADIUS },
                     Projectile {
-                        radius: PROJECTILE_2_RADIUS,
-                        speed: 20.0,
+                        speed: 150.0,
                         direction: player.facing,
                     },
                 ));
@@ -121,9 +121,9 @@ fn fire_weapon(
                     Mesh2d(meshes.add(Circle::new(PROJECTILE_3_RADIUS))),
                     MeshMaterial2d(materials.add(Color::linear_rgb(0.0, 0.0, 1.0))),
                     Transform::from_xyz(location.x, location.y, 0.0),
+                    Collider { radius: PROJECTILE_3_RADIUS },
                     Projectile {
-                        radius: PROJECTILE_3_RADIUS,
-                        speed: 30.0,
+                        speed: 75.0,
                         direction: player.facing,
                     },
                 ));
@@ -156,14 +156,35 @@ fn detect_collisions(
     }
 }
 
+fn detect_projectile_collisions(
+    mut commands: Commands,
+    projectiles: Query<(Entity, &Transform, &Collider), With<Projectile>>,
+    enemies: Query<(&Transform, &Collider), With<Enemy>>
+) {
+
+    for (proj_entity, proj_transformer, proj_collider) in &projectiles {
+        for (enemy_transform, enemy_collider) in &enemies {
+
+            let distance = enemy_transform
+                .translation
+                .distance(proj_transformer.translation);
+
+            if distance < proj_collider.radius + enemy_collider.radius {
+                commands.entity(proj_entity).despawn();
+                break;
+            }
+        }
+    }
+}
+
 fn move_projectiles(
     time: Res<Time>,
-    mut projectiles: Query<(&mut Transform, &Projectile), With<Projectile>>,
+    mut projectiles: Query<(&mut Transform, &Projectile)>,
 ) {
     let dt = time.delta_secs();
     for (mut transform, projectile) in &mut projectiles {
-        transform.translation.y += projectile.direction.y * 300.0 * dt;
-        transform.translation.x += projectile.direction.x * 300.0 * dt;
+        transform.translation.y += projectile.direction.y * projectile.speed * dt;
+        transform.translation.x += projectile.direction.x * projectile.speed * dt;
     }
 }
 
