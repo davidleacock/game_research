@@ -1,8 +1,8 @@
 use bevy::prelude::*;
+use rand::Rng;
 
 const PLAYER_RADIUS: f32 = 10.0;
 const PLAYER_SPEED: f32 = 200.0;
-const ENEMY_RADIUS: f32 = 5.0;
 const ENEMY_SPEED: f32 = 25.0;
 
 const PROJECTILE_1_RADIUS: f32 = 2.0;
@@ -14,11 +14,12 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
         .add_systems(Update, move_player)
-        .add_systems(Update, move_enemy)
+        .add_systems(Update, move_enemies)
         .add_systems(Update, detect_collisions)
         .add_systems(Update, fire_weapon)
         .add_systems(Update, move_projectiles)
         .add_systems(Update, detect_projectile_collisions)
+        .add_systems(Update, check_input)
         .run();
 }
 
@@ -66,15 +67,6 @@ fn setup(
             radius: PLAYER_RADIUS,
         },
     ));
-    commands.spawn((
-        Mesh2d(meshes.add(Circle::new(ENEMY_RADIUS))),
-        MeshMaterial2d(materials.add(Color::BLACK)),
-        Transform::from_xyz(300.0, 300.0, 0.0),
-        Enemy,
-        Collider {
-            radius: ENEMY_RADIUS,
-        },
-    ));
 }
 
 fn fire_weapon(
@@ -97,7 +89,9 @@ fn fire_weapon(
                     Mesh2d(meshes.add(Circle::new(PROJECTILE_1_RADIUS))),
                     MeshMaterial2d(materials.add(Color::linear_rgb(1.0, 0.0, 0.0))),
                     Transform::from_xyz(location.x, location.y, 0.0),
-                    Collider { radius: PROJECTILE_1_RADIUS },
+                    Collider {
+                        radius: PROJECTILE_1_RADIUS,
+                    },
                     Projectile {
                         speed: 300.0,
                         direction: player.facing,
@@ -109,7 +103,9 @@ fn fire_weapon(
                     Mesh2d(meshes.add(Circle::new(PROJECTILE_2_RADIUS))),
                     MeshMaterial2d(materials.add(Color::linear_rgb(0.0, 1.0, 0.0))),
                     Transform::from_xyz(location.x, location.y, 0.0),
-                    Collider { radius: PROJECTILE_2_RADIUS },
+                    Collider {
+                        radius: PROJECTILE_2_RADIUS,
+                    },
                     Projectile {
                         speed: 150.0,
                         direction: player.facing,
@@ -121,7 +117,9 @@ fn fire_weapon(
                     Mesh2d(meshes.add(Circle::new(PROJECTILE_3_RADIUS))),
                     MeshMaterial2d(materials.add(Color::linear_rgb(0.0, 0.0, 1.0))),
                     Transform::from_xyz(location.x, location.y, 0.0),
-                    Collider { radius: PROJECTILE_3_RADIUS },
+                    Collider {
+                        radius: PROJECTILE_3_RADIUS,
+                    },
                     Projectile {
                         speed: 75.0,
                         direction: player.facing,
@@ -136,35 +134,31 @@ fn detect_collisions(
     mut enemy: Query<(&mut Transform, &Collider), With<Enemy>>,
     player: Query<(&Transform, &Collider), (With<Player>, Without<Enemy>)>,
 ) {
-    let Ok((mut enemy_transform, enemy_collider)) = enemy.single_mut() else {
-        return;
-    };
-
     let Ok((player_transform, player_collider)) = player.single() else {
         return;
     };
 
-    let distance = enemy_transform
-        .translation
-        .distance(player_transform.translation);
+    for (mut enemy_transform, enemy_collider) in &mut enemy {
+        let distance = enemy_transform
+            .translation
+            .distance(player_transform.translation);
 
-    if distance < player_collider.radius + enemy_collider.radius {
-        let push_direction =
-            (enemy_transform.translation - player_transform.translation).normalize_or_zero();
-        enemy_transform.translation = player_transform.translation
-            + push_direction * (player_collider.radius + enemy_collider.radius);
+        if distance < player_collider.radius + enemy_collider.radius {
+            let push_direction =
+                (enemy_transform.translation - player_transform.translation).normalize_or_zero();
+            enemy_transform.translation = player_transform.translation
+                + push_direction * (player_collider.radius + enemy_collider.radius);
+        }
     }
 }
 
 fn detect_projectile_collisions(
     mut commands: Commands,
     projectiles: Query<(Entity, &Transform, &Collider), With<Projectile>>,
-    enemies: Query<(&Transform, &Collider), With<Enemy>>
+    enemies: Query<(&Transform, &Collider), With<Enemy>>,
 ) {
-
     for (proj_entity, proj_transformer, proj_collider) in &projectiles {
         for (enemy_transform, enemy_collider) in &enemies {
-
             let distance = enemy_transform
                 .translation
                 .distance(proj_transformer.translation);
@@ -177,10 +171,7 @@ fn detect_projectile_collisions(
     }
 }
 
-fn move_projectiles(
-    time: Res<Time>,
-    mut projectiles: Query<(&mut Transform, &Projectile)>,
-) {
+fn move_projectiles(time: Res<Time>, mut projectiles: Query<(&mut Transform, &Projectile)>) {
     let dt = time.delta_secs();
     for (mut transform, projectile) in &mut projectiles {
         transform.translation.y += projectile.direction.y * projectile.speed * dt;
@@ -188,32 +179,55 @@ fn move_projectiles(
     }
 }
 
-fn move_enemy(
+fn move_enemies(
     time: Res<Time>,
-    mut enemy_query: Query<&mut Transform, With<Enemy>>,
-    player_query: Query<&Transform, (With<Player>, Without<Enemy>)>,
+    mut enemy: Query<&mut Transform, With<Enemy>>,
+    player: Query<&Transform, (With<Player>, Without<Enemy>)>,
 ) {
-    let Ok(mut enemy_transform) = enemy_query.single_mut() else {
+    let Ok(player_transform) = player.single() else {
         return;
     };
 
-    let Ok(player_transform) = player_query.single() else {
-        return;
-    };
+    for mut enemy_transform in &mut enemy {
+        let direction =
+            (player_transform.translation - enemy_transform.translation).normalize_or_zero();
 
-    let direction =
-        (player_transform.translation - enemy_transform.translation).normalize_or_zero();
+        enemy_transform.translation.x += ENEMY_SPEED * direction.x * time.delta_secs();
+        enemy_transform.translation.y += ENEMY_SPEED * direction.y * time.delta_secs();
+    }
+}
 
-    enemy_transform.translation.x += ENEMY_SPEED * direction.x * time.delta_secs();
-    enemy_transform.translation.y += ENEMY_SPEED * direction.y * time.delta_secs();
+fn check_input(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    if keys.pressed(KeyCode::KeyE) {
+        let mut rng = rand::thread_rng();
+        let x = rng.gen_range(-640.0..640.0);
+        let y = rng.gen_range(-360.0..360.0);
+        let r = rng.gen_range(0.0..1.0);
+        let g = rng.gen_range(0.0..1.0);
+        let b = rng.gen_range(0.0..1.0);
+        let radius = rng.gen_range(2.5..10.0);
+
+        commands.spawn((
+            Mesh2d(meshes.add(Circle::new(radius))),
+            MeshMaterial2d(materials.add(Color::linear_rgb(r, g, b))),
+            Transform::from_xyz(x, y, 0.0),
+            Enemy,
+            Collider { radius },
+        ));
+    }
 }
 
 fn move_player(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Transform, &mut Player), With<Player>>,
+    mut player: Query<(&mut Transform, &mut Player), With<Player>>,
 ) {
-    let Ok((mut transform, mut player)) = query.single_mut() else {
+    let Ok((mut transform, mut player)) = player.single_mut() else {
         return;
     };
 
