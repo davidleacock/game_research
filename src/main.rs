@@ -27,6 +27,7 @@ fn main() {
 struct Player {
     weapon_type: WeaponType,
     facing: Vec2,
+    weapon_facing: Vec2,
 }
 
 enum WeaponType {
@@ -62,6 +63,7 @@ fn setup(
         Player {
             weapon_type: WeaponType::ShortDistance,
             facing: Vec2::new(1.0, 0.0),
+            weapon_facing: Vec2::new(1.0, 0.0)
         },
         Collider {
             radius: PLAYER_RADIUS,
@@ -94,7 +96,7 @@ fn fire_weapon(
                     },
                     Projectile {
                         speed: 300.0,
-                        direction: player.facing,
+                        direction: player.weapon_facing,
                     },
                 ));
             }
@@ -108,7 +110,7 @@ fn fire_weapon(
                     },
                     Projectile {
                         speed: 150.0,
-                        direction: player.facing,
+                        direction: player.weapon_facing,
                     },
                 ));
             }
@@ -122,7 +124,7 @@ fn fire_weapon(
                     },
                     Projectile {
                         speed: 75.0,
-                        direction: player.facing,
+                        direction: player.weapon_facing,
                     },
                 ));
             }
@@ -210,7 +212,7 @@ fn check_input(
         let r = rng.gen_range(0.0..1.0);
         let g = rng.gen_range(0.0..1.0);
         let b = rng.gen_range(0.0..1.0);
-        let radius = rng.gen_range(2.5..10.0);
+        let radius = rng.gen_range(2.5..25.0);
 
         commands.spawn((
             Mesh2d(meshes.add(Circle::new(radius))),
@@ -242,9 +244,13 @@ fn move_player(
     }
     if keys.pressed(KeyCode::ArrowLeft) {
         direction.x -= 1.0;
-    }
+        player.weapon_facing.x -= 1.0;
+        player.weapon_facing = player.weapon_facing.normalize_or_zero();
+   }
     if keys.pressed(KeyCode::ArrowRight) {
         direction.x += 1.0;
+        player.weapon_facing.x += 1.0;
+        player.weapon_facing = player.weapon_facing.normalize_or_zero();
     }
     if direction != Vec2::ZERO {
         direction = direction.normalize();
