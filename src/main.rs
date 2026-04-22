@@ -43,7 +43,9 @@ struct Projectile {
 }
 
 #[derive(Component)]
-struct Enemy;
+struct Enemy {
+    health: f32,
+}
 
 #[derive(Component)]
 struct Collider {
@@ -157,16 +159,20 @@ fn detect_collisions(
 fn detect_projectile_collisions(
     mut commands: Commands,
     projectiles: Query<(Entity, &Transform, &Collider), With<Projectile>>,
-    enemies: Query<(&Transform, &Collider), With<Enemy>>,
+    mut enemies: Query<(&Transform, &Collider, &mut Enemy, Entity), With<Enemy>>,
 ) {
     for (proj_entity, proj_transformer, proj_collider) in &projectiles {
-        for (enemy_transform, enemy_collider) in &enemies {
+        for (enemy_transform, enemy_collider, mut enemy, enemy_entity) in &mut enemies {
             let distance = enemy_transform
                 .translation
                 .distance(proj_transformer.translation);
 
             if distance < proj_collider.radius + enemy_collider.radius {
                 commands.entity(proj_entity).despawn();
+                enemy.health -= 25.0;
+                if enemy.health <= 0.0 {
+                    commands.entity(enemy_entity).despawn();
+                }
                 break;
             }
         }
@@ -218,7 +224,7 @@ fn check_input(
             Mesh2d(meshes.add(Circle::new(radius))),
             MeshMaterial2d(materials.add(Color::linear_rgb(r, g, b))),
             Transform::from_xyz(x, y, 0.0),
-            Enemy,
+            Enemy { health: 100.0 },
             Collider { radius },
         ));
     }
