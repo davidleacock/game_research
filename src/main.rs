@@ -1,5 +1,9 @@
 use bevy::prelude::*;
 use rand::Rng;
+use std::char::from_u32;
+use std::f32::consts::PI;
+use std::ops::Div;
+use log::__private_api::loc;
 
 const PLAYER_RADIUS: f32 = 10.0;
 const PLAYER_SPEED: f32 = 200.0;
@@ -26,20 +30,21 @@ fn main() {
 #[derive(Component)]
 struct Player {
     weapon_type: WeaponType,
-    facing: Vec2,
     weapon_facing: Vec2,
 }
 
 enum WeaponType {
-    ShortDistance,
-    MediumDistance,
-    LongDistance,
+    Melee,
+    RadialBurst,
+    HeavyRadial,
 }
 
 #[derive(Component)]
 struct Projectile {
     speed: f32,
     direction: Vec2,
+    max_distance: f32,
+    distance_traveled: f32,
 }
 
 #[derive(Component)]
@@ -63,9 +68,8 @@ fn setup(
         MeshMaterial2d(materials.add(Color::WHITE)),
         Transform::from_xyz(0.0, 0.0, 0.0),
         Player {
-            weapon_type: WeaponType::ShortDistance,
-            facing: Vec2::new(1.0, 0.0),
-            weapon_facing: Vec2::new(1.0, 0.0)
+            weapon_type: WeaponType::Melee,
+            weapon_facing: Vec2::new(1.0, 0.0),
         },
         Collider {
             radius: PLAYER_RADIUS,
@@ -88,50 +92,99 @@ fn fire_weapon(
 
     if keys.just_pressed(KeyCode::Space) {
         match player.weapon_type {
-            WeaponType::ShortDistance => {
-                commands.spawn((
-                    Mesh2d(meshes.add(Circle::new(PROJECTILE_1_RADIUS))),
-                    MeshMaterial2d(materials.add(Color::linear_rgb(1.0, 0.0, 0.0))),
-                    Transform::from_xyz(location.x, location.y, 0.0),
-                    Collider {
-                        radius: PROJECTILE_1_RADIUS,
-                    },
-                    Projectile {
-                        speed: 300.0,
-                        direction: player.weapon_facing,
-                    },
-                ));
+            WeaponType::Melee => {
+                spawn_melee(&mut commands, &mut meshes, &mut materials, player, location);
             }
-            WeaponType::MediumDistance => {
-                commands.spawn((
-                    Mesh2d(meshes.add(Circle::new(PROJECTILE_2_RADIUS))),
-                    MeshMaterial2d(materials.add(Color::linear_rgb(0.0, 1.0, 0.0))),
-                    Transform::from_xyz(location.x, location.y, 0.0),
-                    Collider {
-                        radius: PROJECTILE_2_RADIUS,
-                    },
-                    Projectile {
-                        speed: 150.0,
-                        direction: player.weapon_facing,
-                    },
-                ));
+            WeaponType::RadialBurst => {
+                let num_projectiles = 10.0;
+                let angle_step = (2.0 * PI) / num_projectiles;
+                for i in 1..10 {
+                    let angle = angle_step * i as f32;
+                    spawn_radial_burst_projectile(
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        player,
+                        location,
+                        angle,
+                    );
+                }
             }
-            WeaponType::LongDistance => {
-                commands.spawn((
-                    Mesh2d(meshes.add(Circle::new(PROJECTILE_3_RADIUS))),
-                    MeshMaterial2d(materials.add(Color::linear_rgb(0.0, 0.0, 1.0))),
-                    Transform::from_xyz(location.x, location.y, 0.0),
-                    Collider {
-                        radius: PROJECTILE_3_RADIUS,
-                    },
-                    Projectile {
-                        speed: 75.0,
-                        direction: player.weapon_facing,
-                    },
-                ));
+            WeaponType::HeavyRadial => {
+                spawn_heavy_radial_projectile(&mut commands, meshes, materials, player, location);
             }
         }
     }
+}
+
+fn spawn_heavy_radial_projectile(
+    commands: &mut Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    player: &Player,
+    location: Vec3,
+) {
+    commands.spawn((
+        Mesh2d(meshes.add(Circle::new(PROJECTILE_3_RADIUS))),
+        MeshMaterial2d(materials.add(Color::linear_rgb(0.0, 0.0, 1.0))),
+        Transform::from_xyz(location.x, location.y, 0.0),
+        Collider {
+            radius: PROJECTILE_3_RADIUS,
+        },
+        Projectile {
+            speed: 75.0,
+            direction: player.weapon_facing,
+            max_distance: 75.0,
+            distance_traveled: 0.0,
+        },
+    ));
+}
+
+fn spawn_radial_burst_projectile(
+    commands: &mut Commands,
+    mut meshes: &mut ResMut<Assets<Mesh>>,
+    mut materials: &mut ResMut<Assets<ColorMaterial>>,
+    player: &Player,
+    location: Vec3,
+    angle: f32,
+) {
+    commands.spawn((
+        Mesh2d(meshes.add(Circle::new(PROJECTILE_2_RADIUS))),
+        MeshMaterial2d(materials.add(Color::linear_rgb(0.0, 1.0, 0.0))),
+        Transform::from_xyz(location.x, location.y, 0.0),
+        Collider {
+            radius: PROJECTILE_2_RADIUS,
+        },
+        Projectile {
+            speed: 150.0,
+            direction: Vec2::from_angle(angle),
+            max_distance: 350.0,
+            distance_traveled: 0.0,
+        },
+    ));
+}
+
+fn spawn_melee(
+    commands: &mut Commands,
+    mut meshes: &mut ResMut<Assets<Mesh>>,
+    mut materials: &mut ResMut<Assets<ColorMaterial>>,
+    player: &Player,
+    location: Vec3,
+) {
+    commands.spawn((
+        Mesh2d(meshes.add(Circle::new(PROJECTILE_1_RADIUS))),
+        MeshMaterial2d(materials.add(Color::linear_rgb(1.0, 0.0, 0.0))),
+        Transform::from_xyz(location.x, location.y, 0.0),
+        Collider {
+            radius: PROJECTILE_1_RADIUS,
+        },
+        Projectile {
+            speed: 300.0,
+            direction: player.weapon_facing,
+            max_distance: 25.0,
+            distance_traveled: 0.0,
+        },
+    ));
 }
 
 fn detect_collisions(
@@ -179,11 +232,22 @@ fn detect_projectile_collisions(
     }
 }
 
-fn move_projectiles(time: Res<Time>, mut projectiles: Query<(&mut Transform, &Projectile)>) {
+fn move_projectiles(
+    time: Res<Time>,
+    mut projectiles: Query<(&mut Transform, &mut Projectile, Entity)>,
+    mut commands: Commands,
+) {
     let dt = time.delta_secs();
-    for (mut transform, projectile) in &mut projectiles {
+    for (mut transform, mut projectile, entity) in &mut projectiles {
+        if projectile.distance_traveled >= projectile.max_distance {
+            commands.entity(entity).despawn();
+            continue;
+        }
+
         transform.translation.y += projectile.direction.y * projectile.speed * dt;
         transform.translation.x += projectile.direction.x * projectile.speed * dt;
+
+        projectile.distance_traveled += projectile.speed * dt;
     }
 }
 
@@ -241,6 +305,7 @@ fn move_player(
 
     let dt = time.delta_secs();
     let mut direction = Vec2::ZERO;
+    let mut weapon_facing = Vec2::ZERO;
 
     if keys.pressed(KeyCode::ArrowUp) {
         direction.y += 1.0;
@@ -250,29 +315,31 @@ fn move_player(
     }
     if keys.pressed(KeyCode::ArrowLeft) {
         direction.x -= 1.0;
-        player.weapon_facing.x -= 1.0;
-        player.weapon_facing = player.weapon_facing.normalize_or_zero();
-   }
+        weapon_facing.x -= 1.0;
+    }
     if keys.pressed(KeyCode::ArrowRight) {
         direction.x += 1.0;
-        player.weapon_facing.x += 1.0;
-        player.weapon_facing = player.weapon_facing.normalize_or_zero();
+        weapon_facing.x += 1.0;
     }
     if direction != Vec2::ZERO {
         direction = direction.normalize();
-        player.facing = direction;
+    }
+
+    if weapon_facing != Vec2::ZERO {
+        weapon_facing = weapon_facing.normalize();
+        player.weapon_facing = weapon_facing;
     }
 
     if keys.pressed(KeyCode::Digit1) {
-        player.weapon_type = WeaponType::ShortDistance;
+        player.weapon_type = WeaponType::Melee;
     }
 
     if keys.pressed(KeyCode::Digit2) {
-        player.weapon_type = WeaponType::MediumDistance;
+        player.weapon_type = WeaponType::RadialBurst;
     }
 
     if keys.pressed(KeyCode::Digit3) {
-        player.weapon_type = WeaponType::LongDistance;
+        player.weapon_type = WeaponType::HeavyRadial;
     }
 
     transform.translation.y += direction.y * PLAYER_SPEED * dt;
