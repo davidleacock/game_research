@@ -1,9 +1,6 @@
 use bevy::prelude::*;
 use rand::Rng;
-use std::char::from_u32;
 use std::f32::consts::PI;
-use std::ops::Div;
-use log::__private_api::loc;
 
 const PLAYER_RADIUS: f32 = 10.0;
 const PLAYER_SPEED: f32 = 200.0;
@@ -17,6 +14,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
+        .add_systems(Startup, setup_world)
         .add_systems(Update, move_player)
         .add_systems(Update, move_enemies)
         .add_systems(Update, detect_collisions)
@@ -24,6 +22,7 @@ fn main() {
         .add_systems(Update, move_projectiles)
         .add_systems(Update, detect_projectile_collisions)
         .add_systems(Update, check_input)
+        .add_systems(Update, update_camera)
         .run();
 }
 
@@ -33,8 +32,9 @@ struct Player {
     weapon_facing: Vec2,
 }
 
+// TODO: Review weapon logic, range, area of attack, decay, etc
 enum WeaponType {
-    Melee,
+    Melee, // TODO Improve this, has fields that don't really apply
     RadialBurst,
     HeavyRadial,
 }
@@ -45,6 +45,7 @@ struct Projectile {
     direction: Vec2,
     max_distance: f32,
     distance_traveled: f32,
+    lifetime: f32,
 }
 
 #[derive(Component)]
@@ -77,6 +78,24 @@ fn setup(
     ));
 }
 
+fn setup_world(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let cols = (5000.0 / 48.0) as i32;
+    let rows = (5000.0 / 48.0) as i32;
+    let tile_handle: Handle<Image> = asset_server.load("tile.png");
+
+    for row in 0..rows {
+        for col in 0..cols {
+            let x = -2500.0 + col as f32 * 48.0;
+            let y = -2500.0 + row as f32 * 48.0;
+
+            commands.spawn((
+                Sprite::from(tile_handle.clone()),
+                Transform::from_xyz(x, y, -1.0),
+            ));
+        }
+    }
+}
+
 fn fire_weapon(
     keys: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
@@ -96,22 +115,32 @@ fn fire_weapon(
                 spawn_melee(&mut commands, &mut meshes, &mut materials, player, location);
             }
             WeaponType::RadialBurst => {
-                let num_projectiles = 10.0;
+                let num_projectiles = 9.0;
                 let angle_step = (2.0 * PI) / num_projectiles;
-                for i in 1..10 {
+                for i in 0..9 {
                     let angle = angle_step * i as f32;
                     spawn_radial_burst_projectile(
                         &mut commands,
                         &mut meshes,
                         &mut materials,
-                        player,
                         location,
                         angle,
                     );
                 }
             }
             WeaponType::HeavyRadial => {
-                spawn_heavy_radial_projectile(&mut commands, meshes, materials, player, location);
+                let num_projectiles = 4.0;
+                let angle_step = (2.0 * PI) / num_projectiles;
+                for i in 0..4 {
+                    let angle = angle_step * i as f32;
+                    spawn_heavy_radial_projectile(
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        location,
+                        angle,
+                    );
+                }
             }
         }
     }
@@ -119,10 +148,10 @@ fn fire_weapon(
 
 fn spawn_heavy_radial_projectile(
     commands: &mut Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    player: &Player,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
     location: Vec3,
+    angle: f32,
 ) {
     commands.spawn((
         Mesh2d(meshes.add(Circle::new(PROJECTILE_3_RADIUS))),
@@ -133,18 +162,18 @@ fn spawn_heavy_radial_projectile(
         },
         Projectile {
             speed: 75.0,
-            direction: player.weapon_facing,
+            direction: Vec2::from_angle(angle),
             max_distance: 75.0,
             distance_traveled: 0.0,
+            lifetime: 10.0,
         },
     ));
 }
 
 fn spawn_radial_burst_projectile(
     commands: &mut Commands,
-    mut meshes: &mut ResMut<Assets<Mesh>>,
-    mut materials: &mut ResMut<Assets<ColorMaterial>>,
-    player: &Player,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
     location: Vec3,
     angle: f32,
 ) {
@@ -160,19 +189,20 @@ fn spawn_radial_burst_projectile(
             direction: Vec2::from_angle(angle),
             max_distance: 350.0,
             distance_traveled: 0.0,
+            lifetime: 10.0,
         },
     ));
 }
 
 fn spawn_melee(
     commands: &mut Commands,
-    mut meshes: &mut ResMut<Assets<Mesh>>,
-    mut materials: &mut ResMut<Assets<ColorMaterial>>,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
     player: &Player,
     location: Vec3,
 ) {
     commands.spawn((
-        Mesh2d(meshes.add(Circle::new(PROJECTILE_1_RADIUS))),
+        Mesh2d(meshes.add(Rectangle::new(15.0, 5.0))),
         MeshMaterial2d(materials.add(Color::linear_rgb(1.0, 0.0, 0.0))),
         Transform::from_xyz(location.x, location.y, 0.0),
         Collider {
@@ -183,6 +213,7 @@ fn spawn_melee(
             direction: player.weapon_facing,
             max_distance: 25.0,
             distance_traveled: 0.0,
+            lifetime: 0.1,
         },
     ));
 }
@@ -235,14 +266,17 @@ fn detect_projectile_collisions(
 fn move_projectiles(
     time: Res<Time>,
     mut projectiles: Query<(&mut Transform, &mut Projectile, Entity)>,
+    player: Query<&Player, With<Player>>,
     mut commands: Commands,
 ) {
     let dt = time.delta_secs();
     for (mut transform, mut projectile, entity) in &mut projectiles {
-        if projectile.distance_traveled >= projectile.max_distance {
+        if (projectile.distance_traveled >= projectile.max_distance) || projectile.lifetime <= 0.0 {
             commands.entity(entity).despawn();
             continue;
         }
+
+        projectile.lifetime -= dt;
 
         transform.translation.y += projectile.direction.y * projectile.speed * dt;
         transform.translation.x += projectile.direction.x * projectile.speed * dt;
@@ -344,4 +378,20 @@ fn move_player(
 
     transform.translation.y += direction.y * PLAYER_SPEED * dt;
     transform.translation.x += direction.x * PLAYER_SPEED * dt;
+}
+
+fn update_camera(
+    player: Query<&Transform, With<Player>>,
+    mut camera: Query<&mut Transform, (With<Camera2d>, Without<Player>)>,
+) {
+    let Ok(player_transform) = player.single() else {
+        return;
+    };
+
+    let Ok(mut camera_transform) = camera.single_mut() else {
+        return;
+    };
+
+    camera_transform.translation.x = player_transform.translation.x;
+    camera_transform.translation.y = player_transform.translation.y;
 }
