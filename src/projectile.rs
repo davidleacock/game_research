@@ -46,8 +46,8 @@ pub fn detect_projectile_collisions(
 
             if distance < proj_collider.radius + enemy_collider.radius {
                 commands.entity(proj_entity).despawn();
-                enemy.health -= 25.0;
-                if enemy.health <= 0.0 {
+                enemy.current_health -= 25.0;
+                if enemy.current_health <= 0.0 {
                     commands.entity(enemy_entity).despawn();
                 }
                 break;
