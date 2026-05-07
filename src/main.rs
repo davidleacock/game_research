@@ -11,6 +11,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, player::setup)
         .add_systems(Startup, map::setup_world)
+        .add_systems(Startup, enemy::spawn_enemies)
         .add_systems(Update, player::move_player)
         .add_systems(Update, enemy::move_enemies)
         .add_systems(Update, enemy::detect_collisions)

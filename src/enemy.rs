@@ -10,6 +10,7 @@ pub struct Enemy {
     pub enemy_type: EnemyType,
 }
 
+#[derive(Copy, Clone)]
 enum EnemyType {
     Small,
     Medium,
@@ -82,32 +83,55 @@ pub fn detect_collisions(
     }
 }
 
+
+pub fn spawn_enemies(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>
+) {
+    let num_clusters = 10;
+    let mut rng = rand::thread_rng();
+
+    for _ in 0..num_clusters {
+        let cluster_x = rng.gen_range(-2500.0..2500.0);
+        let cluster_y = rng.gen_range(-2500.0..2500.0);
+        let num_enemies = rng.gen_range(3..10);
+        for _ in 0..num_enemies {
+            let half_size = 500.0;
+            let enemy_x = cluster_x + rng.gen_range(-half_size..half_size);
+            let enemy_y = cluster_y + rng.gen_range(-half_size..half_size);
+
+            let enemy_type = match rng.gen_range(0..3) {
+                0 => EnemyType::Small,
+                1 => EnemyType::Medium,
+                _ => EnemyType::Large
+            };
+
+            let r = rng.gen_range(0.0..1.0);
+            let g = rng.gen_range(0.0..1.0);
+            let b = rng.gen_range(0.0..1.0);
+
+            commands.spawn((
+                Mesh2d(meshes.add(Circle::new(enemy_type.size()))),
+                MeshMaterial2d(materials.add(Color::linear_rgb(r, g, b))),
+                Transform::from_xyz(enemy_x, enemy_y, 0.0),
+                Enemy {
+                    current_health: enemy_type.max_health(),
+                    enemy_type,
+                },
+                Collider { radius: enemy_type.size() },
+            ));
+        }
+    }
+}
+
 pub fn check_input(
     keys: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    if keys.pressed(KeyCode::KeyE) {
-        let mut rng = rand::thread_rng();
-        let x = rng.gen_range(-640.0..640.0);
-        let y = rng.gen_range(-360.0..360.0);
-        let r = rng.gen_range(0.0..1.0);
-        let g = rng.gen_range(0.0..1.0);
-        let b = rng.gen_range(0.0..1.0);
-        let radius = rng.gen_range(2.5..25.0);
 
-        let enemy_type = EnemyType::Medium;
 
-        commands.spawn((
-            Mesh2d(meshes.add(Circle::new(enemy_type.size()))),
-            MeshMaterial2d(materials.add(Color::linear_rgb(r, g, b))),
-            Transform::from_xyz(x, y, 0.0),
-            Enemy {
-                current_health: enemy_type.max_health(),
-                enemy_type,
-            },
-            Collider { radius },
-        ));
-    }
+
 }
