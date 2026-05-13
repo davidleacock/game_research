@@ -18,7 +18,7 @@ fn main() {
         .add_systems(Update, player::fire_weapon)
         .add_systems(Update, projectile::move_projectiles)
         .add_systems(Update, projectile::detect_projectile_collisions)
-        .add_systems(Update, enemy::check_input)
+        .add_systems(Update, enemy::debug_inputs)
         .add_systems(Update, player::update_camera)
         .run();
 }
