@@ -4,7 +4,6 @@ use crate::player::Player;
 use EnemyState::Roam;
 use bevy::prelude::*;
 use rand::{Rng, thread_rng};
-use std::char::from_u32;
 
 #[derive(Component)]
 pub struct Enemy {

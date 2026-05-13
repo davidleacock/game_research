@@ -217,16 +217,33 @@ pub fn move_player(
 
 pub fn update_camera(
     player: Query<&Transform, With<Player>>,
-    mut camera: Query<&mut Transform, (With<Camera2d>, Without<Player>)>,
+    mut camera: Query<
+        (&mut Transform, &mut Projection),
+        (With<Camera2d>, Without<Player>),
+    >,
+    time: Res<Time>,
+    keys: Res<ButtonInput<KeyCode>>,
 ) {
+    let dt = time.delta_secs();
+
     let Ok(player_transform) = player.single() else {
         return;
     };
 
-    let Ok(mut camera_transform) = camera.single_mut() else {
+    let Ok((mut camera_transform, mut camera_projection)) = camera.single_mut() else {
         return;
     };
 
+    let is_moving = keys.pressed(KeyCode::ArrowUp)
+    || keys.pressed(KeyCode::ArrowDown)
+    || keys.pressed(KeyCode::ArrowLeft)
+    || keys.pressed(KeyCode::ArrowRight);
+
     camera_transform.translation.x = player_transform.translation.x;
     camera_transform.translation.y = player_transform.translation.y;
+
+    if let Projection::Orthographic(ref mut ortho) = *camera_projection {
+        let target = if is_moving { 1.5 } else { 1.0 };
+        ortho.scale += (target - ortho.scale) * 2.5 * dt;
+    }
 }
