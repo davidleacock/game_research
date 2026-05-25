@@ -52,6 +52,11 @@ impl EnemyType {
     }
 }
 
+#[derive(Event)]
+pub struct EnemyKilled {
+    pub position: Vec3,
+}
+
 pub fn move_enemies(
     time: Res<Time>,
     player: Query<&Transform, (With<Player>, Without<Enemy>)>,
