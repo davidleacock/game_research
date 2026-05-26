@@ -1,8 +1,8 @@
-use bevy::prelude::*;
 use std::f32::consts::PI;
 
-use crate::components::Collider;
-use crate::projectile::Projectile;
+use bevy::prelude::*;
+
+use crate::{components::Collider, projectile::Projectile};
 
 const PLAYER_RADIUS: f32 = 10.0;
 const PLAYER_SPEED: f32 = 200.0;
@@ -14,6 +14,7 @@ const PROJECTILE_3_RADIUS: f32 = 10.0;
 pub struct Player {
     weapon_type: WeaponType,
     weapon_facing: Vec2,
+    pub pickup_radius: f32,
 }
 
 // TODO: Review weapon logic, range, area of attack, decay, etc
@@ -36,6 +37,7 @@ pub fn setup(
         Player {
             weapon_type: WeaponType::Melee,
             weapon_facing: Vec2::new(1.0, 0.0),
+            pickup_radius: 20.0,
         },
         Collider {
             radius: PLAYER_RADIUS,
@@ -217,10 +219,7 @@ pub fn move_player(
 
 pub fn update_camera(
     player: Query<&Transform, With<Player>>,
-    mut camera: Query<
-        (&mut Transform, &mut Projection),
-        (With<Camera2d>, Without<Player>),
-    >,
+    mut camera: Query<(&mut Transform, &mut Projection), (With<Camera2d>, Without<Player>)>,
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
 ) {
@@ -235,9 +234,9 @@ pub fn update_camera(
     };
 
     let is_moving = keys.pressed(KeyCode::ArrowUp)
-    || keys.pressed(KeyCode::ArrowDown)
-    || keys.pressed(KeyCode::ArrowLeft)
-    || keys.pressed(KeyCode::ArrowRight);
+        || keys.pressed(KeyCode::ArrowDown)
+        || keys.pressed(KeyCode::ArrowLeft)
+        || keys.pressed(KeyCode::ArrowRight);
 
     camera_transform.translation.x = player_transform.translation.x;
     camera_transform.translation.y = player_transform.translation.y;

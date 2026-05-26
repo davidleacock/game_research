@@ -1,8 +1,9 @@
-use bevy::ecs::system::EntityEntryCommands;
-use bevy::prelude::*;
+use bevy::{ecs::system::EntityEntryCommands, prelude::*};
 
-use crate::components::Collider;
-use crate::enemy::{Enemy, EnemyKilled};
+use crate::{
+    components::Collider,
+    enemy::{Enemy, EnemyKilled},
+};
 
 #[derive(Component)]
 pub struct Projectile {
@@ -50,7 +51,9 @@ pub fn detect_projectile_collisions(
                 enemy.current_health -= 25.0;
                 if enemy.current_health <= 0.0 {
                     commands.entity(enemy_entity).despawn();
-                    commands.trigger(EnemyKilled { position: enemy_transform.translation });
+                    commands.trigger(EnemyKilled {
+                        position: enemy_transform.translation,
+                    });
                 }
                 break;
             }

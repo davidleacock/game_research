@@ -3,9 +3,9 @@ use bevy::prelude::*;
 mod components;
 mod enemy;
 mod map;
+mod pickup;
 mod player;
 mod projectile;
-mod pickup;
 
 fn main() {
     App::new()
@@ -19,6 +19,7 @@ fn main() {
         .add_systems(Update, player::fire_weapon)
         .add_systems(Update, projectile::move_projectiles)
         .add_systems(Update, projectile::detect_projectile_collisions)
+        .add_systems(Update, pickup::detect_collisions)
         .add_systems(Update, enemy::debug_inputs)
         .add_systems(Update, player::update_camera)
         .add_observer(pickup::on_enemy_killed)

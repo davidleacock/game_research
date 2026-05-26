@@ -1,9 +1,8 @@
-use crate::components::Collider;
-use crate::enemy::EnemyState::Chase;
-use crate::player::Player;
 use EnemyState::Roam;
 use bevy::prelude::*;
 use rand::{Rng, thread_rng};
+
+use crate::{components::Collider, enemy::EnemyState::Chase, player::Player};
 
 #[derive(Component)]
 pub struct Enemy {
@@ -96,7 +95,6 @@ pub fn move_enemies(
                     enemy.enemy_type.speed() * enemy.roam_direction.y * time.delta_secs();
 
                 enemy.roam_distance_remaining -= enemy.enemy_type.speed() * time.delta_secs();
-
             }
             Chase => {
                 let direction = (player_transform.translation - enemy_transform.translation)

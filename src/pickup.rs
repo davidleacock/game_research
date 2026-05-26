@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use crate::enemy::EnemyKilled;
+
+use crate::{components::Collider, enemy::EnemyKilled, player::Player};
 
 #[derive(Component)]
 pub struct Pickup {
@@ -21,7 +22,6 @@ pub fn on_enemy_killed(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-
     let position = trigger.event().position;
 
     commands.spawn((
@@ -31,6 +31,27 @@ pub fn on_enemy_killed(
         Pickup {
             state: PickupState::Dropped,
             pickup_type: PickupType::Gem,
-        }
+        },
+        Collider { radius: 10.0 },
     ));
+}
+
+pub fn detect_collisions(
+    mut commands: Commands,
+    player: Query<(&Transform, &Player), With<Player>>,
+    pickups: Query<(&Transform, &Collider, Entity), With<Pickup>>,
+) {
+    let Ok((player_transform, player_self)) = player.single() else {
+        return;
+    };
+
+    for (pickup_transform, picked_collider, entity) in pickups {
+        let distance = pickup_transform
+            .translation
+            .distance(player_transform.translation);
+
+        if distance < player_self.pickup_radius + picked_collider.radius {
+            commands.entity(entity).despawn();
+        }
+    }
 }
