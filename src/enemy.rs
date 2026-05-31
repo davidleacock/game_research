@@ -1,19 +1,18 @@
-use EnemyState::Roam;
 use bevy::prelude::*;
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 
-use crate::{components::Collider, enemy::EnemyState::Chase, player::Player};
+use crate::{components::Collider, player::Player};
 
 #[derive(Component)]
 pub struct Enemy {
     pub current_health: f32,
     pub enemy_type: EnemyType,
-    state: EnemyState,
-    roam_direction: Vec2,
+    pub state: EnemyState,
+    pub roam_direction: Vec2,
     roam_distance_remaining: f32,
 }
 
-enum EnemyState {
+pub enum EnemyState {
     Roam,
     Chase,
 }
@@ -73,13 +72,13 @@ pub fn move_enemies(
             .distance(player_transform.translation)
             < 300.0
         {
-            enemy.state = Chase
+            enemy.state = EnemyState::Chase
         } else {
-            enemy.state = Roam
+            enemy.state = EnemyState::Roam
         }
 
         match enemy.state {
-            Roam => {
+            EnemyState::Roam => {
                 if enemy.roam_distance_remaining <= 0.0 {
                     let angle = rng.gen_range(0.0..std::f32::consts::TAU);
                     let direction = Vec2::from_angle(angle as f32);
@@ -96,7 +95,7 @@ pub fn move_enemies(
 
                 enemy.roam_distance_remaining -= enemy.enemy_type.speed() * time.delta_secs();
             }
-            Chase => {
+            EnemyState::Chase => {
                 let direction = (player_transform.translation - enemy_transform.translation)
                     .normalize_or_zero();
 
@@ -178,12 +177,4 @@ pub fn spawn_enemies(
             ));
         }
     }
-}
-
-pub fn debug_inputs(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-) {
 }

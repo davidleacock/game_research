@@ -2,6 +2,8 @@ use bevy::prelude::*;
 
 use crate::{components::Collider, enemy::EnemyKilled, player::Player};
 
+const PICKUP_SPEED: f32 = 300.0;
+
 #[derive(Component)]
 pub struct Pickup {
     state: PickupState,
@@ -9,7 +11,9 @@ pub struct Pickup {
 }
 
 pub enum PickupState {
-    Dropped, // Can non-moving pickups use this?
+    Dropped,
+    Bounce { distance_remaining: f32 },
+    Homing,
 }
 
 pub enum PickupType {
@@ -38,20 +42,71 @@ pub fn on_enemy_killed(
 
 pub fn detect_collisions(
     mut commands: Commands,
-    player: Query<(&Transform, &Player), With<Player>>,
+    player: Query<(&Transform, &Collider, &Player), With<Player>>,
     pickups: Query<(&Transform, &Collider, Entity), With<Pickup>>,
 ) {
-    let Ok((player_transform, player_self)) = player.single() else {
+    let Ok((player_transform, player_collider, player_self)) = player.single() else {
         return;
     };
 
-    for (pickup_transform, picked_collider, entity) in pickups {
+    for (pickup_transform, pickup_collider, entity) in pickups {
         let distance = pickup_transform
             .translation
             .distance(player_transform.translation);
 
-        if distance < player_self.pickup_radius + picked_collider.radius {
+        if distance < player_collider.radius + pickup_collider.radius {
             commands.entity(entity).despawn();
+        }
+    }
+}
+
+pub fn update_pickups(
+    time: Res<Time>,
+    player: Query<(&Transform, &Player), (With<Player>, Without<Pickup>)>,
+    pickups: Query<(&mut Transform, &mut Pickup), With<Pickup>>,
+) {
+    let Ok((player_transform, player)) = player.single() else {
+        return;
+    };
+
+    for (mut pickup_transform, mut pickup) in pickups {
+        match pickup.state {
+            PickupState::Dropped => {
+                let distance = pickup_transform
+                    .translation
+                    .distance(player_transform.translation);
+
+                if distance <= player.pickup_radius {
+                    pickup.state = PickupState::Bounce {
+                        distance_remaining: 50.0,
+                    };
+                }
+            }
+            PickupState::Bounce { distance_remaining } => {
+                if distance_remaining <= 0.0 {
+                    pickup.state = PickupState::Homing;
+                } else {
+                    let direction = -(player_transform.translation - pickup_transform.translation)
+                        .normalize_or_zero();
+
+                    pickup_transform.translation.x +=
+                        PICKUP_SPEED * direction.x * time.delta_secs();
+                    pickup_transform.translation.y +=
+                        PICKUP_SPEED * direction.y * time.delta_secs();
+                    let remaining = distance_remaining - PICKUP_SPEED * time.delta_secs();
+
+                    pickup.state = PickupState::Bounce {
+                        distance_remaining: remaining,
+                    }
+                }
+            }
+            PickupState::Homing => {
+                let direction = (player_transform.translation - pickup_transform.translation)
+                    .normalize_or_zero();
+
+                pickup_transform.translation.x += PICKUP_SPEED * direction.x * time.delta_secs();
+                pickup_transform.translation.y += PICKUP_SPEED * direction.y * time.delta_secs();
+            }
         }
     }
 }

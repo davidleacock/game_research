@@ -1,6 +1,8 @@
+use crate::debug::DebugConfig;
 use bevy::prelude::*;
 
 mod components;
+mod debug;
 mod enemy;
 mod map;
 mod pickup;
@@ -20,8 +22,13 @@ fn main() {
         .add_systems(Update, projectile::move_projectiles)
         .add_systems(Update, projectile::detect_projectile_collisions)
         .add_systems(Update, pickup::detect_collisions)
-        .add_systems(Update, enemy::debug_inputs)
         .add_systems(Update, player::update_camera)
+        .add_systems(Update, pickup::update_pickups)
+        .add_systems(Update, debug::debug_inputs)
+        .add_systems(Update, debug::draw_debug)
         .add_observer(pickup::on_enemy_killed)
+        .insert_resource(DebugConfig {
+            visuals_enabled: false,
+        })
         .run();
 }

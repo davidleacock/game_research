@@ -13,7 +13,7 @@ const PROJECTILE_3_RADIUS: f32 = 10.0;
 #[derive(Component)]
 pub struct Player {
     weapon_type: WeaponType,
-    weapon_facing: Vec2,
+    pub weapon_facing: Vec2,
     pub pickup_radius: f32,
 }
 
@@ -37,7 +37,7 @@ pub fn setup(
         Player {
             weapon_type: WeaponType::Melee,
             weapon_facing: Vec2::new(1.0, 0.0),
-            pickup_radius: 20.0,
+            pickup_radius: 100.0,
         },
         Collider {
             radius: PLAYER_RADIUS,
@@ -182,9 +182,11 @@ pub fn move_player(
 
     if keys.pressed(KeyCode::ArrowUp) {
         direction.y += 1.0;
+        weapon_facing.y += 1.0;
     }
     if keys.pressed(KeyCode::ArrowDown) {
         direction.y -= 1.0;
+        weapon_facing.y -= 1.0;
     }
     if keys.pressed(KeyCode::ArrowLeft) {
         direction.x -= 1.0;
