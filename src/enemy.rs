@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use rand::{thread_rng, Rng};
+use rand::{Rng, thread_rng};
 
 use crate::{components::Collider, player::Player};
 
