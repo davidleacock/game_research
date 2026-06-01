@@ -10,6 +10,11 @@ const PROJECTILE_1_RADIUS: f32 = 2.0;
 const PROJECTILE_2_RADIUS: f32 = 5.0;
 const PROJECTILE_3_RADIUS: f32 = 10.0;
 
+#[derive(Resource)]
+pub struct PlayerStats {
+    pub gems: i32,
+}
+
 #[derive(Component)]
 pub struct Player {
     weapon_type: WeaponType,

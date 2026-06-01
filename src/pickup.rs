@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::player::PlayerStats;
 use crate::{components::Collider, enemy::EnemyKilled, player::Player};
 
 const PICKUP_SPEED: f32 = 300.0;
@@ -44,6 +45,7 @@ pub fn detect_collisions(
     mut commands: Commands,
     player: Query<(&Transform, &Collider, &Player), With<Player>>,
     pickups: Query<(&Transform, &Collider, Entity), With<Pickup>>,
+    mut player_stats: ResMut<PlayerStats>
 ) {
     let Ok((player_transform, player_collider, player_self)) = player.single() else {
         return;
@@ -55,6 +57,7 @@ pub fn detect_collisions(
             .distance(player_transform.translation);
 
         if distance < player_collider.radius + pickup_collider.radius {
+            player_stats.gems += 1;
             commands.entity(entity).despawn();
         }
     }
