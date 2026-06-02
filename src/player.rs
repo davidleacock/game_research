@@ -20,6 +20,7 @@ pub struct Player {
     weapon_type: WeaponType,
     pub weapon_facing: Vec2,
     pub pickup_radius: f32,
+    pub weapon_level: u32
 }
 
 // TODO: Review weapon logic, range, area of attack, decay, etc
@@ -43,6 +44,7 @@ pub fn setup(
             weapon_type: WeaponType::Melee,
             weapon_facing: Vec2::new(1.0, 0.0),
             pickup_radius: 100.0,
+            weapon_level: 1,
         },
         Collider {
             radius: PLAYER_RADIUS,

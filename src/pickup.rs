@@ -43,11 +43,11 @@ pub fn on_enemy_killed(
 
 pub fn detect_collisions(
     mut commands: Commands,
-    player: Query<(&Transform, &Collider, &Player), With<Player>>,
+    mut player: Query<(&Transform, &Collider, &mut Player), With<Player>>,
     pickups: Query<(&Transform, &Collider, Entity), With<Pickup>>,
     mut player_stats: ResMut<PlayerStats>
 ) {
-    let Ok((player_transform, player_collider, player_self)) = player.single() else {
+    let Ok((player_transform, player_collider, mut player_self)) = player.single_mut() else {
         return;
     };
 
@@ -59,6 +59,10 @@ pub fn detect_collisions(
         if distance < player_collider.radius + pickup_collider.radius {
             player_stats.gems += 1;
             commands.entity(entity).despawn();
+            if player_stats.gems % 5 == 0 {
+                player_self.weapon_level += 1;
+
+            }
         }
     }
 }

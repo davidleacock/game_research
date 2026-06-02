@@ -10,10 +10,10 @@ pub struct DebugConfig {
 }
 
 #[derive(Component)]
-pub struct GemCountText;
+pub struct DebugInfoText;
 
 pub fn setup(mut commands: Commands) {
-    commands.spawn((GemCountText, Text::new("Gems: 0")));
+    commands.spawn((DebugInfoText, Text::new("Gems: 0 Level: 1")));
 }
 
 pub fn debug_inputs(keys: Res<ButtonInput<KeyCode>>, mut config: ResMut<DebugConfig>) {
@@ -24,11 +24,18 @@ pub fn debug_inputs(keys: Res<ButtonInput<KeyCode>>, mut config: ResMut<DebugCon
 
 pub fn draw_debug_data(
     player_stats: Res<PlayerStats>,
-    mut text: Query<&mut Text, With<GemCountText>>,
+    player_query: Query<&Player>,
+    mut text: Query<&mut Text, With<DebugInfoText>>,
 ) {
+    let Ok(player) = player_query.single() else {
+        return;
+    };
+
     if let Ok(mut debug_text) = text.single_mut() {
-        debug_text.0 = format!("Gems: {}", player_stats.gems);
+        debug_text.0 = format!("Gems: {} Level: {}", player_stats.gems, player.weapon_level);
     }
+
+
 }
 
 pub fn draw_debug_visuals(
