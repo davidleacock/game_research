@@ -71,9 +71,9 @@ pub fn fire_weapon(
                 spawn_melee(&mut commands, &mut meshes, &mut materials, player, location);
             }
             WeaponType::RadialBurst => {
-                let num_projectiles = 9.0;
+                let num_projectiles = 9.0 * player.weapon_level as f32;
                 let angle_step = (2.0 * PI) / num_projectiles;
-                for i in 0..9 {
+                for i in 0..(9 * player.weapon_level) {
                     let angle = angle_step * i as f32;
                     spawn_radial_burst_projectile(
                         &mut commands,
@@ -85,9 +85,9 @@ pub fn fire_weapon(
                 }
             }
             WeaponType::HeavyRadial => {
-                let num_projectiles = 4.0;
+                let num_projectiles = 4.0 * player.weapon_level as f32;
                 let angle_step = (2.0 * PI) / num_projectiles;
-                for i in 0..4 {
+                for i in 0..(4 * player.weapon_level) {
                     let angle = angle_step * i as f32;
                     spawn_heavy_radial_projectile(
                         &mut commands,

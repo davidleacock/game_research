@@ -61,7 +61,6 @@ pub fn detect_collisions(
             commands.entity(entity).despawn();
             if player_stats.gems % 5 == 0 {
                 player_self.weapon_level += 1;
-
             }
         }
     }
