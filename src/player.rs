@@ -20,7 +20,7 @@ pub struct Player {
     weapon_type: WeaponType,
     pub weapon_facing: Vec2,
     pub pickup_radius: f32,
-    pub weapon_level: u32
+    pub weapon_level: u32,
 }
 
 // TODO: Review weapon logic, range, area of attack, decay, etc
