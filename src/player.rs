@@ -68,7 +68,16 @@ pub fn fire_weapon(
     if keys.just_pressed(KeyCode::Space) {
         match player.weapon_type {
             WeaponType::Melee => {
-                spawn_melee(&mut commands, &mut meshes, &mut materials, player, location);
+                let total = player.weapon_level as f32;
+                let spacing = 18.0;
+                let start = -(total - 1.0) / 2.0 * spacing;
+
+                for i in 0..player.weapon_level {
+                    let offset = start + i as f32 * spacing;
+                    let mut spawn_position = location;
+                    spawn_position.y += offset;
+                    spawn_melee(&mut commands, &mut meshes, &mut materials, player, spawn_position);
+                }
             }
             WeaponType::RadialBurst => {
                 let num_projectiles = 9.0 * player.weapon_level as f32;
@@ -119,7 +128,7 @@ fn spawn_melee(
         Projectile {
             speed: 300.0,
             direction: player.weapon_facing,
-            max_distance: 25.0,
+            max_distance: 125.0,
             distance_traveled: 0.0,
             lifetime: 0.1,
         },
